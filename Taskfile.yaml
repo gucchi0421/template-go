@@ -1,0 +1,34 @@
+version: "3"
+
+dotenv: [".env"]
+
+includes:
+  # app: ./Taskfile.app.yaml
+  # db: ./Taskfile.db.yaml
+  docker: ./Taskfile.docker.yaml
+  # gcloud: ./Taskfile.gcloud.yaml
+
+vars:
+  _ENTRY_PATH: "cmd/app/main.go"
+  _TMP_PATH: "tmp/main"
+  _PROD_DIST_DIR: "bin/{{.SERVICENAME}}"
+  _DEV_DIST_DIR: "bin/{{.SERVICENAME}}_dev"
+  _WIRE_DIR: "internal/wire"
+  _DOCKER_DIR: "docker"
+  _DOCKER_APP: "app"
+  _DOCKERFILE: "{{._DOCKER_DIR}}/{{._DOCKER_APP}}/Dockerfile"
+  _DOCKER_DB_URL: "{{.DB_USER}}:{{.DB_PASS}}@{{.DB_HOST}}:{{.DB_PORT}}/{{.DB_NAME}}?sslmode=disable"
+  # _GOOSE_MIGRATE_DIR: "db/migration"
+  # _PBSCHEMA_DIR: "api"
+
+tasks:
+  default:
+    desc: "タスク一覧"
+    cmds:
+      - task -l --sort none
+    silent: true
+
+  echo:
+    desc: "変数確認用"
+    cmds:
+      - echo "{{._DOCKER_DB_URL}}"

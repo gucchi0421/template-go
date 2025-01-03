@@ -1,0 +1,203 @@
+version: "3"
+
+tasks:
+  # ================================================
+  # Go
+  # ================================================
+  new:
+    desc: "新規ファイル作成 -- { file_name }"
+    vars:
+      _FILENAME: "{{.CLI_ARGS}}"
+      _DOMAIN_DIR: internal/domain
+      _INFRA_DIR: internal/infra
+      _PRESENTER_DIR: internal/http
+      _USECASE_DIR: internal/usecase
+    preconditions:
+      - sh: test "{{._FILENAME}}" != ""
+        msg: "引数にファイル名を指定してください"
+    cmds:
+      - mkdir -p {{._DOMAIN_DIR}}/model
+      - mkdir -p {{._DOMAIN_DIR}}/repository
+      - mkdir -p {{._INFRA_DIR}}/repository
+      - mkdir -p {{._PRESENTER_DIR}}/handler
+      - mkdir -p {{._USECASE_DIR}}
+      - echo "package model" > {{._DOMAIN_DIR}}/model/{{._FILENAME}}.go
+      - echo "package repository" > {{._DOMAIN_DIR}}/repository/{{._FILENAME}}.go
+      - echo "package repository" > {{._INFRA_DIR}}/repository/{{._FILENAME}}.go
+      - echo "package repository" > {{._INFRA_DIR}}/repository/{{._FILENAME}}_test.go
+      - echo "package handler" > {{._PRESENTER_DIR}}/handler/{{._FILENAME}}.go
+      - echo "package handler" > {{._PRESENTER_DIR}}/handler/{{._FILENAME}}_test.go
+      - echo "package usecase" > {{._USECASE_DIR}}/{{._FILENAME}}.go
+    silent: true
+
+  dev:
+    desc: "開発サーバー起動"
+    cmds:
+      - echo "✅Starting Go Server Watch..."
+      - air -c .air.toml
+    env:
+      GO_ENV: "development"
+    silent: true
+
+  gen:
+    desc: "コード生成"
+    cmds:
+      - go generate ./...
+      - wire gen ./{{._WIRE_DIR}}
+    silent: true
+
+  run:
+    desc: "アプリケーション実行"
+    cmds:
+      - go run {{._ENTRY_PATH}}
+    env:
+      GO_ENV: "development"
+    silent: true
+
+  seed:
+    desc: "データシート実行"
+    cmds:
+      - docker compose exec {{._DOCKER_APP}} go run ./cmd/db/seed.go
+    silent: true
+
+  test:
+    desc: "全テスト"
+    cmds:
+      - gotestsum --format testdox --format-icons hivis -- ./...
+    silent: true
+
+  fmt:
+    desc: "全コードフォーマット"
+    cmds:
+      - go fmt ./...
+    silent: true
+
+  get:
+    desc: "全パッケージ取得"
+    cmds:
+      - go get -u ./...
+    silent: true
+
+  mod:
+    desc: "依存解決"
+    cmds:
+      - go mod tidy
+    silent: true
+
+  lint:
+    desc: "リンター実行"
+    cmds:
+      - golangci-lint run --config=.golangci.yaml ./...
+    silent: true
+
+  doc:
+    desc: "godocサーバー起動"
+    cmds:
+      - echo "✅Open go docs http://localhost:10001"
+      - godoc -http=:10001
+    silent: true
+
+  build:
+    desc: "ビルド"
+    cmds:
+      - go build -buildvcs=false -o {{._DEV_DIST_DIR}} {{._ENTRY_PATH}}
+    silent: true
+
+  build-lin:
+    desc: "ビルド linux"
+    cmds:
+      - go build -buildvcs=false -o {{._PROD_DIST_DIR}} {{._ENTRY_PATH}}
+      - echo "✅Compiled linux binary => {{._PROD_DIST_DIR}}"
+    vars:
+      GOOS: "linux"
+      GOARCH: "amd64"
+    silent: true
+
+  build-win:
+    desc: "ビルド windows"
+    cmds:
+      - go build -buildvcs=false -o {{._PROD_DIST_DIR}}.exe {{._ENTRY_PATH}}
+      - echo "✅Compiled windows binary => {{._PROD_DIST_DIR}}.exe"
+    vars:
+      GOOS: "win"
+      GOARCH: "amd64"
+      CGO_ENABLED: "1"
+      CC: "x86_64-w64-mingw32-gcc"
+    silent: true
+
+  # ================================================
+  # Ent
+  # ================================================
+  ent-new:
+    desc: "新規スキーマ作成 -- { file_name }"
+    dir: "{{._ENT_DIR}}"
+    cmds:
+      - go run -mod=mod entgo.io/ent/cmd/ent new --target ./schema {{.CLI_ARGS}}
+    silent: true
+
+  ent-gen:
+    desc: "entコード生成"
+    dir: "{{._ENT_DIR}}"
+    cmds:
+      - go generate ./...
+    silent: true
+
+  # ================================================
+  # Buf
+  # ================================================
+  buf-gen:
+    desc: "pbコード生成"
+    cmds:
+      - task: lint
+      - buf generate
+
+  buf-lint:
+    desc: "pbリンターを実行"
+    cmds:
+      - buf lint
+    silent: true
+
+  buf-login:
+    desc: "BSRログイン"
+    cmds:
+      - buf registry login
+    silent: true
+
+  # ================================================
+  # Goose
+  # ================================================
+  goose:
+    desc: "マイグレーション適用 -- { up || down }"
+    cmds:
+      - |
+        docker compose exec {{._DOCKER_APP}} \
+        go run github.com/pressly/goose/v3/cmd/goose@latest \
+        -dir {{._MIGRATE_DIR}} "{{._DOCKER_DB_URL}}" {{.CLI_ARGS}}
+    vars:
+      GOOSE_DRIVER: "{{.DB_DRIVER}}"
+      GOOSE_DBSTRING: "{{.DB_NAME}}"
+    silent: true
+
+  goose-new:
+    desc: "マイグレーションファイル作成 -- { file_name }"
+    cmds:
+      - |
+        docker compose exec {{._DOCKER_APP}} \
+        go run github.com/pressly/goose/v3/cmd/goose@latest \
+        -dir {{._MIGRATE_DIR}} "{{._DOCKER_DB_URL}}" create {{.CLI_ARGS}} sql
+    vars:
+      GOOSE_DRIVER: "{{.DB_DRIVER}}"
+      GOOSE_DBSTRING: "{{.DB_NAME}}"
+    silent: true
+
+  goose-ps:
+    desc: "マイグレーションステータス確認"
+    cmds:
+      - |
+        docker compose exec {{._DOCKER_APP}} \
+        go run github.com/pressly/goose/v3/cmd/goose@latest \
+        -dir {{._MIGRATE_DIR}} status
+    vars:
+      GOOSE_DRIVER: "{{.DB_DRIVER}}"
+      GOOSE_DBSTRING: "{{.DB_NAME}}"
+    silent: true

@@ -1,0 +1,41 @@
+run:
+  timeout: 5m
+  build-tags:
+    - "wireinject"
+
+issues:
+  exclude-use-default: false
+  exclude-dirs:
+    - internal/wire/wire.go
+  exclude-rules:
+    - linters:
+        - gci
+      text: "File is not `gci`-ed with --skip-generated -s standard -s default"
+
+linters-settings:
+  gocyclo:
+    min-complexity: 50
+  misspell:
+    locale: US
+  staticcheck:
+    checks:
+      - "SA4006:ignore"
+
+linters:
+  disable:
+    - exportloopref
+  enable:
+    - goimports
+    - errcheck
+    - gocognit
+    - gocyclo
+    - gofmt
+    - govet
+    - misspell
+    - staticcheck
+    - whitespace
+    - dupl
+    - copyloopvar
+    - gocritic
+    - nolintlint
+    - prealloc
