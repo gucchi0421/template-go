@@ -1,0 +1,62 @@
+x-common: &common
+  tty: true
+  networks:
+    - app
+
+services:
+  app:
+    container_name: ${SERVICENAME:-app}
+    build:
+      context: .
+      dockerfile: docker/app/Dockerfile
+      args:
+        - target=dev
+        - UID=${UID:-1000}
+        - GID=${GID:-1000}
+        - USERNAME=${USER:-user}
+    volumes:
+      - ./:/app
+      - ./.env:/app/.env
+    ports:
+      - ${PORT:-8080}:${PORT:-8080}
+    environment:
+      GO_ENV: "dev"
+    env_file: .env
+    stdin_open: true
+    command: /bin/sh -c "air -c .air.toml"
+    <<: *common
+
+  # db:
+  #   container_name: ${SERVICENAME:-app}_db
+  #   image: postgres:latest
+  #   environment:
+  #     POSTGRES_DB: ${DEV_DB_NAME}
+  #     POSTGRES_USER: ${DEV_DB_USER}
+  #     POSTGRES_PASSWORD: ${DEV_DB_PASS}
+  #     POSTGRES_HOST_AUTH_METHOD: trust
+  #     TZ: 'Asia/Tokyo'
+  #   ports:
+  #     - "${DEV_DB_PORT}:${DEV_DB_PORT}"
+  #   volumes:
+  #     - db_data:/var/lib/postgresql/data
+  #   <<: *common
+
+  # pga:
+  #   container_name: ${SERVICENAME:-app}_pga
+  #   image: dpage/pgadmin4:latest
+  #   environment:
+  #     PGADMIN_DEFAULT_EMAIL: dev@dev.com
+  #     PGADMIN_DEFAULT_PASSWORD: password
+  #   ports:
+  #     - "8081:80"
+  #   depends_on:
+  #     db:
+  #       condition: service_started
+  #   <<: *common
+
+networks:
+  app:
+    driver: bridge
+
+# volumes:
+#   db_data:
