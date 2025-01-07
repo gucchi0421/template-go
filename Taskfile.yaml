@@ -3,7 +3,7 @@ version: "3"
 dotenv: [".env"]
 
 includes:
-  # app: ./Taskfile.app.yaml
+  app: ./Taskfile.app.yaml
   # db: ./Taskfile.db.yaml
   docker: ./Taskfile.docker.yaml
   # gcloud: ./Taskfile.gcloud.yaml
